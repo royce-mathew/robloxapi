@@ -126,10 +126,12 @@ impl Game {
         }
     }
 
-    pub async fn create_dev_product(&mut self, name: str, price: u32) -> Result<Json> {
-        if let Some(dev_product) = self.dev_products[name] {
-            return dev_product;
+    pub async fn create_dev_product(&mut self, name: String, price: u32) -> u64 {
+        if let Some(dev_products) = self.dev_products.clone() {
+            return dev_products[&name];
         } else {
+            let mut dev_products: HashMap<String, u64> = HashMap::new();
+
             let data = self.auth.post(
                     format!("{}/{}/developerproducts?name={}&priceInRobux={}", crate::api::DEVPAGE, self.universe_id, name, price)
                 )
@@ -141,9 +143,11 @@ impl Game {
                 .await
                 .expect("Failed to get dev product json");
 
-            
-            print!(data);
+            println!("{}", data);
+            dev_products.insert("k".to_string(), 100000);
 
+            self.dev_products = Some(dev_products.clone());
         }
+        5
     }
 }
