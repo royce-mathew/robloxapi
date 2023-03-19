@@ -2,7 +2,7 @@
 name = "robloxapi"
 description = "A Rust library for the Roblox API."
 version = "0.0.1"
-authors = ["PythonicIconic <coatedalmond@protonmail.com>", "royce-mathew <royce1mathew@gmail.com>"]
+authors = ["PythonicIconic <coatedalmond@protonmail.com>", "royce-mathew <royce1mathew@gmail.com>", "sur4y <42720850+sur4y@users.github.com>"]
 license = "MIT"
 homepage = "https://github.com/royce-mathew/robloxapi."
 repository = "https://github.com/royce-mathew/robloxapi.git"
