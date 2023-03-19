@@ -48,16 +48,31 @@ impl Client {
         headers.insert(header::CONTENT_LENGTH,
                        header::HeaderValue::from_static("0"));
 
-        let resp = reqwest::Client::new().post("https://catalog.roblox.com/v1/catalog/items/details")
-            .header("content-length", "0").send().await.expect("Failed to get X-CSRF-TOKEN");
 
-        headers.insert(header::HeaderName::from_static("x-csrf-token"),
-                       header::HeaderValue::from(
-                           resp.headers().get("x-csrf-token")
-                               .unwrap_or(&header::HeaderValue::from_static(""))));
+        // Get X-CSRF Token
+        let resp = reqwest::Client::new()
+            .post("https://catalog.roblox.com/v1/catalog/items/details")
+            .header("content-length", "0")
+            .send()
+            .await
+            .expect("Failed to get X-CSRF-TOKEN");
 
-        self.session = reqwest::Client::builder().cookie_store(true).user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4324.152 Safari/537.36")
-            .default_headers(headers).build().expect("Failed to build new client from headers");
+        headers.insert(
+            header::HeaderName::from_static("x-csrf-token"),
+            header::HeaderValue::from(
+                resp.headers()
+                    .get("x-csrf-token")
+                    .unwrap_or(&header::HeaderValue::from_static(""))
+                )
+            );
+
+        // Create a new session with the cookie and token
+        self.session = reqwest::Client::builder()
+            .cookie_store(true)
+            .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4324.152 Safari/537.36")
+            .default_headers(headers)
+            .build()
+            .expect("Failed to build new client from headers");
 
         self.validate_cookie().await;
         self

@@ -1,5 +1,6 @@
 use serde::{Serialize, Deserialize};
 use async_trait::async_trait;
+use serde_json::error;
 use std::collections::HashMap;
 
 #[async_trait]
@@ -40,14 +41,18 @@ pub struct Server {
     pub ping: u32
 }
 
+impl std::fmt::Display for Server {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "Game(id={}, playing={}, max_players={})", self.id, self.playing, self.max_players)
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Game {
     #[serde(skip)]
     auth: reqwest::Client,
     #[serde(skip)]
     servers: Option<Vec<Server>>,
-    #[serde(skip)]
-    dev_products: Option<HashMap<String, DevProduct>>,
 
     #[serde(rename="id")]
     pub universe_id: u64,
@@ -84,10 +89,15 @@ impl std::fmt::Display for Game {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct DevProduct {
     pub name: String,
+    #[serde(skip)]
     pub price: u32,
     pub id: u64,
-    pub Description: String,
-    pub iconImageAssetId: u64
+    #[serde(rename="Description")]
+    pub description: String,
+    #[serde(rename="iconImageAssetId")]
+    pub image_asset_id: Option<u64>,
+    #[serde(rename="shopId")]
+    pub shop_id: u64
 }
 
 impl std::fmt::Display for DevProduct {
@@ -140,36 +150,49 @@ impl Game {
         }
     }
 
-    pub async fn create_dev_product(&mut self, name: String, price: u32) -> DevProduct {
-        if let Some(dev_products) = self.dev_products.clone() {
-            dev_products[&name].clone()
-        } else {
-            let mut dev_products: HashMap<String, DevProduct> = HashMap::new();
+    pub async fn create_dev_product(&self, name: String, price: u32) -> DevProduct {
+        // Get X-CSRF-TOKEN
+        let auth_resp = self.auth.post("https://catalog.roblox.com/v1/catalog/items/details")
+        .header("content-length", "0")
+        .send()
+        .await
+        .expect("Failed to get X-CSRF-TOKEN");
+        
+        // Make Request To DeveloperProducts
+        let data = self.auth.post(
+            &format!("{}/{}/developerproducts?name={}&description={}&priceInRobux={}", crate::api::DEVPAGE, self.universe_id, name, price, price)
+        )
+        .header("x-csrf-token", auth_resp.headers().get("x-csrf-token").unwrap())
+        .header("content-length", "0")
+        .send()
+        .await
+        .expect("Failed to create dev product");
+        
+        // Get json Data
+        let json_data = data
+        .json::<serde_json::Value>()
+        .await
+        .expect("Failed to get dev product json");
 
-            let data = self.auth.post(
-                    format!("{}/{}/developerproducts?name={}&description={}&priceInRobux={}", crate::api::DEVPAGE, self.universe_id, name, price, price)
-                )
-                .send()
-                .await
-                .expect("Failed to create dev product")
-                .json::<serde_json::Value>()
-                .await
-                .expect("Failed to get dev product json");
+        // Check if any errrs occurred
+        if let Some(error) = json_data.get("errors") {
+            if error[0]["code"] == 4 {
+                // Developer Product Already exists
 
-            println!("{:?}", data);
-
-            let product = DevProduct {
-                ..serde_json::from_value(
-                    data.get("data")
-                    .expect("Failed to get product data")
-                    [0].clone()
-                )
-                .expect("Failed to parse into DevProduct")
-            };
-
-            dev_products.insert(name, product.clone());
-            self.dev_products = Some(dev_products.clone());
-            product
+                // Get the developer product internally here?
+                println!("Product already exists, retrying");
+            } else { panic!("Err: {}", error[0]); }
         }
+
+        let product = DevProduct {
+            price,
+            ..serde_json::from_value(json_data)
+                .expect("Failed to parse into DevProduct")
+        };
+        product
     }
+
+    // pub async fn get_dev_product(&self, name: String) -> DevProduct {
+    //     // TODO
+    // }
 }
