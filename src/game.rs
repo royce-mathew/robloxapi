@@ -147,7 +147,7 @@ impl Game {
             let mut dev_products: HashMap<String, DevProduct> = HashMap::new();
 
             let data = self.auth.post(
-                    format!("{}/{}/developerproducts?name={}&description={}priceInRobux={}", crate::api::DEVPAGE, self.universe_id, name, price, price)
+                    format!("{}/{}/developerproducts?name={}&description={}&priceInRobux={}", crate::api::DEVPAGE, self.universe_id, name, price, price)
                 )
                 .send()
                 .await
