@@ -1,5 +1,5 @@
-# rsblox
-rsblox is a async Rust roblox api wrapper; Fork of PythonicIconic's [RbxAPI-rs](https://github.com/PythonicIconic/RbxAPI-rs).
+# robloxapi
+robloxapi is a async Rust API wrapper for roblox; Fork of PythonicIconic's [RbxAPI-rs](https://github.com/PythonicIconic/RbxAPI-rs).
 
 ## Usage
 TBA
