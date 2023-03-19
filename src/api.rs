@@ -1,7 +1,7 @@
 use reqwest::header;
 
-use crate::{User, UserBuilder};
 use crate::{Game, GameBuilder};
+use crate::{User, UserBuilder};
 
 pub(crate) const BASE: &str = "https://api.roblox.com";
 #[allow(dead_code)]
@@ -25,7 +25,7 @@ pub(crate) const DEVPAGE: &str = "https://develop.roblox.com/v1/universes";
 
 #[derive(Debug)]
 pub struct Client {
-    pub session: reqwest::Client
+    pub session: reqwest::Client,
 }
 
 impl Default for Client {
@@ -37,17 +37,23 @@ impl Default for Client {
 impl Client {
     pub fn new() -> Self {
         Self {
-            session: reqwest::Client::builder().cookie_store(true).build().unwrap()
+            session: reqwest::Client::builder()
+                .cookie_store(true)
+                .build()
+                .unwrap(),
         }
     }
 
     pub async fn cookie(mut self, cookie: &str) -> Self {
         let mut headers = header::HeaderMap::new();
-        headers.insert(header::COOKIE,
-                       header::HeaderValue::from_str(&*(".ROBLOSECURITY=".to_owned() + cookie)).unwrap());
-        headers.insert(header::CONTENT_LENGTH,
-                       header::HeaderValue::from_static("0"));
-
+        headers.insert(
+            header::COOKIE,
+            header::HeaderValue::from_str(&*(".ROBLOSECURITY=".to_owned() + cookie)).unwrap(),
+        );
+        headers.insert(
+            header::CONTENT_LENGTH,
+            header::HeaderValue::from_static("0"),
+        );
 
         // Get X-CSRF Token
         let resp = reqwest::Client::new()
@@ -62,9 +68,9 @@ impl Client {
             header::HeaderValue::from(
                 resp.headers()
                     .get("x-csrf-token")
-                    .unwrap_or(&header::HeaderValue::from_static(""))
-                )
-            );
+                    .unwrap_or(&header::HeaderValue::from_static("")),
+            ),
+        );
 
         // Create a new session with the cookie and token
         self.session = reqwest::Client::builder()
@@ -83,9 +89,15 @@ impl Client {
     }
 
     pub async fn current_user(&self) -> User {
-        let data = self.session.get("https://www.roblox.com/mobileapi/userinfo")
-            .send().await.expect("Failed to get user info")
-            .json::<serde_json::Value>().await.expect("Failed to get user json");
+        let data = self
+            .session
+            .get("https://www.roblox.com/mobileapi/userinfo")
+            .send()
+            .await
+            .expect("Failed to get user info")
+            .json::<serde_json::Value>()
+            .await
+            .expect("Failed to get user json");
 
         let builder = data.get("UserID").unwrap().as_u64().unwrap();
         UserBuilder::new(builder, &self.session).await
@@ -96,8 +108,12 @@ impl Client {
     }
 
     async fn validate_cookie(&self) {
-        let resp = self.session.get("https://www.roblox.com/mobileapi/userinfo")
-            .send().await.expect("Failed to get user info");
+        let resp = self
+            .session
+            .get("https://www.roblox.com/mobileapi/userinfo")
+            .send()
+            .await
+            .expect("Failed to get user info");
         let _: serde_json::Value = resp.json().await.expect("Failed to get json");
     }
 }
