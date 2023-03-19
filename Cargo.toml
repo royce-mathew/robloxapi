@@ -1,5 +1,5 @@
 [package]
-name = "rsblox"
+name = "robloxapi"
 description = "A Rust library for the Roblox API."
 version = "0.0.1"
 authors = ["PythonicIconic <coatedalmond@protonmail.com>", "royce-mathew <royce1mathew@gmail.com>"]
