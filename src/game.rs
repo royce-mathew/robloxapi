@@ -20,7 +20,12 @@ impl GameBuilder for u64 {
 
         Game {
             auth: client.clone(),
-            ..serde_json::from_value(data.get("data").expect("Failed to get game root data")[0].clone()).expect("Failed to parse into Game")
+            ..serde_json::from_value(
+                    data.get("data")
+                    .expect("Failed to get game root data")
+                    [0].clone()
+                )
+                .expect("Failed to parse into Game")
         }
     }
 }
@@ -42,7 +47,7 @@ pub struct Game {
     #[serde(skip)]
     servers: Option<Vec<Server>>,
     #[serde(skip)]
-    dev_products: Option<HashMap<String, u64>>,
+    dev_products: Option<HashMap<String, DevProduct>>,
 
     #[serde(rename="id")]
     pub universe_id: u64,
@@ -70,18 +75,25 @@ pub struct Game {
     pub genre: String
 }
 
-pub struct DevProduct {
-    pub name: String,
-    pub description: Option<String>,
-    pub price: u32,
-    pub product_id: Option<u64>,
-}
-
 impl std::fmt::Display for Game {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "Game(placeid={}, name={})", self.place_id, self.name)
     }
 }
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct DevProduct {
+    pub name: String,
+    pub price: u32,
+    pub id: u64,
+}
+
+impl std::fmt::Display for DevProduct {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "DevProduct(name={}, price={}, product_id={})", self.name, self.price, self.id)
+    }
+}
+
 
 impl Game {
     pub async fn servers(&mut self) -> Vec<Server> {
@@ -126,16 +138,15 @@ impl Game {
         }
     }
 
-    pub async fn create_dev_product(&mut self, name: String, price: u32) -> u64 {
+    pub async fn create_dev_product(&mut self, name: String, price: u32) -> DevProduct {
         if let Some(dev_products) = self.dev_products.clone() {
-            return dev_products[&name];
+            dev_products[&name].clone()
         } else {
-            let mut dev_products: HashMap<String, u64> = HashMap::new();
+            let mut dev_products: HashMap<String, DevProduct> = HashMap::new();
 
             let data = self.auth.post(
                     format!("{}/{}/developerproducts?name={}&priceInRobux={}", crate::api::DEVPAGE, self.universe_id, name, price)
                 )
-                .header("content-length", "0")
                 .send()
                 .await
                 .expect("Failed to create dev product")
@@ -143,11 +154,20 @@ impl Game {
                 .await
                 .expect("Failed to get dev product json");
 
-            println!("{}", data);
-            dev_products.insert("k".to_string(), 100000);
+            println!("{:?}", data);
 
+            let product = DevProduct {
+                ..serde_json::from_value(
+                    data.get("data")
+                    .expect("Failed to get game root data")
+                    [0].clone()
+                )
+                .expect("Failed to parse into Game")
+            };
+
+            dev_products.insert(name, product.clone());
             self.dev_products = Some(dev_products.clone());
+            product
         }
-        5
     }
 }
