@@ -86,6 +86,8 @@ pub struct DevProduct {
     pub name: String,
     pub price: u32,
     pub id: u64,
+    pub Description: String,
+    pub iconImageAssetId: u64
 }
 
 impl std::fmt::Display for DevProduct {
@@ -145,7 +147,7 @@ impl Game {
             let mut dev_products: HashMap<String, DevProduct> = HashMap::new();
 
             let data = self.auth.post(
-                    format!("{}/{}/developerproducts?name={}&priceInRobux={}", crate::api::DEVPAGE, self.universe_id, name, price)
+                    format!("{}/{}/developerproducts?name={}&description={}priceInRobux={}", crate::api::DEVPAGE, self.universe_id, name, price, price)
                 )
                 .send()
                 .await
@@ -159,10 +161,10 @@ impl Game {
             let product = DevProduct {
                 ..serde_json::from_value(
                     data.get("data")
-                    .expect("Failed to get game root data")
+                    .expect("Failed to get product data")
                     [0].clone()
                 )
-                .expect("Failed to parse into Game")
+                .expect("Failed to parse into DevProduct")
             };
 
             dev_products.insert(name, product.clone());
