@@ -26,6 +26,8 @@ pub(crate) const DEVPAGE: &str = "https://develop.roblox.com/v1/universes";
 #[derive(Debug)]
 pub struct Client {
     pub session: reqwest::Client,
+
+    xcsrftoken: Option<String>,
 }
 
 impl Default for Client {
@@ -41,6 +43,8 @@ impl Client {
                 .cookie_store(true)
                 .build()
                 .unwrap(),
+
+            xcsrftoken: None,
         }
     }
 
@@ -55,20 +59,12 @@ impl Client {
             header::HeaderValue::from_static("0"),
         );
 
-        // Get X-CSRF Token
-        let resp = reqwest::Client::new()
-            .post("https://catalog.roblox.com/v1/catalog/items/details")
-            .header("content-length", "0")
-            .send()
-            .await
-            .expect("Failed to get X-CSRF-TOKEN");
+        self.xcsrftoken = self.get_xcsrftoken().await;
 
         headers.insert(
             header::HeaderName::from_static("x-csrf-token"),
             header::HeaderValue::from(
-                resp.headers()
-                    .get("x-csrf-token")
-                    .unwrap_or(&header::HeaderValue::from_static("")),
+                header::HeaderValue::from_str(&self.xcsrftoken.as_ref().unwrap()).unwrap(),
             ),
         );
 
@@ -81,6 +77,7 @@ impl Client {
             .expect("Failed to build new client from headers");
 
         self.validate_cookie().await;
+
         self
     }
 
@@ -101,6 +98,21 @@ impl Client {
 
         let builder = data.get("UserID").unwrap().as_u64().unwrap();
         UserBuilder::new(builder, &self.session).await
+    }
+
+    pub async fn get_xcsrftoken(&self) -> Option<String> {
+        // Get X-CSRF Token
+
+        let resp = reqwest::Client::new()
+            .post("https://catalog.roblox.com/v1/catalog/items/details")
+            .header("content-length", "0")
+            .send()
+            .await
+            .expect("Failed to get X-CSRF-TOKEN");
+
+        resp.headers()
+            .get("x-csrf-token")
+            .map(|value| value.to_str().unwrap().to_owned())
     }
 
     pub async fn game(&self, builder: impl GameBuilder) -> Game {
