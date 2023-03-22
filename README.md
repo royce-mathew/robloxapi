@@ -12,7 +12,7 @@ use rbxapi;
 #[tokio::main]
 async fn main() {
     let cookie = "your_cookie";
-    let client = rbxapi::Client.new().cookie(cookie).await;
+    let mut client = rbxapi::Client.new().cookie(cookie).await;
     
     let my_user = client.current_user().await;
     let str_user = client.user("builderman").await;
@@ -28,7 +28,7 @@ use tokio;
 #[tokio::main]
 async fn main() {
    let place_id = 7415484311; // Place ID for game
-   let client = robloxapi::Client() // Initialize a new client instance
+   let mut client = robloxapi::Client() // Initialize a new client instance
       .await;
 
    // Create a new game given place id
