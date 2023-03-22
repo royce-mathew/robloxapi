@@ -1,6 +1,6 @@
 [package]
 name = "robloxapi"
-description = "A Rust library for the Roblox API."
+description = "Async Rust API Wrapper for Roblox."
 version = "0.0.12"
 authors = ["PythonicIconic <coatedalmond@protonmail.com>", "royce-mathew <royce1mathew@gmail.com>", "sur4y <42720850+sur4y@users.github.com>"]
 license = "MIT"
@@ -16,3 +16,4 @@ tokio = { version = "1.0", features = ["macros", "rt-multi-thread"] }
 serde = { version = "1.0", features = ["derive"] }
 async-trait = "0.1.42"
 serde_json = "1.0"
+thiserror = "1.0.40"
