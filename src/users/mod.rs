@@ -1,8 +1,10 @@
-use std::collections::HashMap;
+pub mod models;
+
+use self::models::User;
 
 use async_trait::async_trait;
 use reqwest::Method;
-use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
 #[async_trait]
 pub trait UserBuilder {
@@ -17,7 +19,7 @@ impl UserBuilder for &str {
         map.insert("usernames", vec![self]);
 
         let data = client
-            .post(&format!("{}/usernames/users", crate::api::USER))
+            .post(&format!("{}/usernames/users", crate::USER))
             .await
             .json(&map)
             .header("content-length", serde_json::to_vec(&map).unwrap().len())
@@ -45,8 +47,9 @@ impl UserBuilder for &str {
 impl UserBuilder for u64 {
     /// Create a new user with userid
     async fn new(self, client: &mut crate::Https) -> User {
-        let user: User = client.client
-            .request(Method::GET, &format!("{}/users/{}", crate::api::BASE, self))
+        let user: User = client
+            .client
+            .request(Method::GET, &format!("{}/users/{}", crate::BASE, self))
             .send()
             .await
             .expect("Failed to get user info from base")
@@ -60,8 +63,9 @@ impl UserBuilder for u64 {
             avatarfinal: user.avatarfinal,
             avataruri: user.avataruri,
             isonline: user.isonline,
-            ..client.client
-                .request(Method::GET, &format!("{}/users/{}", crate::api::USER, self))
+            ..client
+                .client
+                .request(Method::GET, &format!("{}/users/{}", crate::USER, self))
                 .send()
                 .await
                 .expect("Failed to get user info from user")
@@ -72,44 +76,6 @@ impl UserBuilder for u64 {
 
         u2.client = Some(client.clone());
         u2
-    }
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct User {
-    #[serde(skip)]
-    client: Option<crate::Https>,
-    #[serde(skip)]
-    friends: Option<Vec<User>>,
-
-    #[serde(rename = "Id")]
-    pub id: Option<u64>,
-    #[serde(rename = "Username")]
-    pub username: Option<String>,
-    #[serde(rename = "AvatarFinal")]
-    pub avatarfinal: Option<bool>,
-    #[serde(rename = "AvatarUri")]
-    pub avataruri: Option<String>,
-    pub created: Option<String>,
-    pub description: Option<String>,
-    #[serde(rename = "isBanned")]
-    pub isbanned: Option<bool>,
-    #[serde(rename = "IsOnline")]
-    pub isonline: Option<bool>,
-}
-
-impl std::fmt::Display for User {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        let unknown = String::from("unknown");
-        write!(
-            f,
-            "User(id={}, username={}, created={}, isonline={}, isbanned={})",
-            self.id.as_ref().unwrap(),
-            self.username.as_ref().unwrap_or(&unknown),
-            self.created.as_ref().unwrap_or(&unknown),
-            self.isonline.as_ref().unwrap_or(&false),
-            self.isbanned.as_ref().unwrap_or(&false)
-        )
     }
 }
 
@@ -128,12 +94,15 @@ impl User {
                 .as_mut()
                 .unwrap()
                 .client
-                .request(Method::GET, &format!(
-                    "{}/users/{}/friends{}",
-                    crate::api::BASE,
-                    self.id.unwrap(),
-                    page_string
-                ))
+                .request(
+                    Method::GET,
+                    &format!(
+                        "{}/users/{}/friends{}",
+                        crate::BASE,
+                        self.id.unwrap(),
+                        page_string
+                    ),
+                )
                 .send()
                 .await
                 .expect("Failed to get friends list")
@@ -151,12 +120,15 @@ impl User {
                     .as_mut()
                     .unwrap()
                     .client
-                    .request(Method::GET, &format!(
-                        "{}/users/{}/friends{}",
-                        crate::api::BASE,
-                        self.id.unwrap(),
-                        page_string
-                    ))
+                    .request(
+                        Method::GET,
+                        &format!(
+                            "{}/users/{}/friends{}",
+                            crate::BASE,
+                            self.id.unwrap(),
+                            page_string
+                        ),
+                    )
                     .send()
                     .await
                     .expect("Failed to get friends list")
@@ -176,13 +148,19 @@ impl User {
 
     /// Check if user has asset, may require cookie
     pub async fn has_asset(&mut self, asset_id: u64) -> bool {
-        self.client.as_mut().unwrap().client
-            .request(Method::GET, &format!(
-                "{}/ownership/hasasset?userId={}&assetId={}",
-                crate::api::BASE,
-                self.id.unwrap(),
-                asset_id
-            ))
+        self.client
+            .as_mut()
+            .unwrap()
+            .client
+            .request(
+                Method::GET,
+                &format!(
+                    "{}/ownership/hasasset?userId={}&assetId={}",
+                    crate::BASE,
+                    self.id.unwrap(),
+                    asset_id
+                ),
+            )
             .send()
             .await
             .expect("Failed to get ownership info")

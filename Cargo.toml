@@ -1,7 +1,7 @@
 [package]
 name = "robloxapi"
 description = "Async Rust API Wrapper for Roblox."
-version = "0.0.12"
+version = "0.0.13"
 authors = ["PythonicIconic <coatedalmond@protonmail.com>", "royce-mathew <royce1mathew@gmail.com>", "sur4y <42720850+sur4y@users.github.com>"]
 license = "MIT"
 homepage = "https://github.com/royce-mathew/robloxapi"
