@@ -1,8 +1,10 @@
-use reqwest::header;
+use reqwest::{Method};
 
 use crate::{Game, GameBuilder};
 use crate::{User, UserBuilder};
 
+
+// STATIC URLS
 pub(crate) const BASE: &str = "https://api.roblox.com";
 #[allow(dead_code)]
 pub(crate) const AUTH: &str = "https://auth.roblox.com/v1/account/pin/unlock";
@@ -23,11 +25,11 @@ pub(crate) const INVENTORY: &str = "https://inventory.roblox.com";
 #[allow(dead_code)]
 pub(crate) const DEVPAGE: &str = "https://develop.roblox.com/v1/universes";
 
-#[derive(Debug)]
-pub struct Client {
-    pub session: reqwest::Client,
 
-    xcsrftoken: Option<String>,
+    
+#[derive(Debug, Clone)]
+pub struct Client {
+    pub session: crate::Https,
 }
 
 impl Default for Client {
@@ -37,95 +39,99 @@ impl Default for Client {
 }
 
 impl Client {
+    /// Create a new client instance
     pub fn new() -> Self {
         Self {
-            session: reqwest::Client::builder()
-                .cookie_store(true)
-                .build()
-                .unwrap(),
-
-            xcsrftoken: None,
+            session: crate::Https::new(),
         }
     }
+    
 
-    pub async fn cookie(mut self, cookie: &str) -> Self {
-        let mut headers = header::HeaderMap::new();
-        headers.insert(
-            header::COOKIE,
-            header::HeaderValue::from_str(&*(".ROBLOSECURITY=".to_owned() + cookie)).unwrap(),
-        );
-        headers.insert(
-            header::CONTENT_LENGTH,
-            header::HeaderValue::from_static("0"),
-        );
-
-        self.xcsrftoken = self.get_xcsrftoken().await;
-
-        headers.insert(
-            header::HeaderName::from_static("x-csrf-token"),
-            header::HeaderValue::from(
-                header::HeaderValue::from_str(&self.xcsrftoken.as_ref().unwrap()).unwrap(),
-            ),
-        );
-
-        // Create a new session with the cookie and token
-        self.session = reqwest::Client::builder()
-            .cookie_store(true)
-            .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4324.152 Safari/537.36")
-            .default_headers(headers)
-            .build()
-            .expect("Failed to build new client from headers");
-
-        self.validate_cookie().await;
-
+    /// # setCookie
+    /// Set the cookie for the client; This function is needed to execute specific API requests such as `.create_developer_product()`
+    ///
+    /// # Example
+    /// ```
+    /// use tokio;
+    /// use robloxapi;
+    ///
+    /// let COOKIE: &str = "_|WARNING:-DO-NOT-SHARE-THIS.--Sharing-this-will-allow-someone-to-log-in-as-you-and-to-steal-your-ROBUX-and-items.|_8B1028";
+    ///
+    /// #[tokio::main]
+    /// async fn main() {
+    ///     let client = robloxapi::Client.new()
+    ///         .set_cookie(COOKIE)
+    ///         .await;
+    /// }
+    ///
+    /// ```
+    pub async fn set_cookie(&mut self, cookie: &str) -> &Self {
+        self.session = self.session.clone().set_cookie(cookie).await;
         self
     }
 
-    pub async fn user(&self, builder: impl UserBuilder) -> User {
-        builder.new(&self.session).await
+    /// Create a new user given user_id
+    /// ## Example
+    /// ```
+    /// use tokio;
+    /// use robloxapi;
+    ///
+    /// #[tokio::main]
+    /// async fn main() {
+    ///     let client = robloxapi::Client.new().await;
+    ///     let user = client.user(242872495).await;
+    /// }
+    /// ```
+    pub async fn user(&mut self, builder: impl UserBuilder) -> User {
+        builder.new(&mut self.session).await
     }
 
-    pub async fn current_user(&self) -> User {
+    /// Get the current user. Must be logged in with a cookie to get current_user
+    /// # Example
+    /// ```
+    /// use tokio;
+    /// use robloxapi;
+    ///
+    /// let COOKIE: &str = "";
+    ///
+    /// #[tokio::main]
+    /// async fn main() {
+    ///     let client = robloxapi::Client.new()
+    ///         .set_cookie(COOKIE)
+    ///         .await;
+    ///     let current_user = client.current_user().await;
+    /// }
+    //
+    pub async fn current_user(&mut self) -> User {
         let data = self
             .session
-            .get("https://www.roblox.com/mobileapi/userinfo")
-            .send()
-            .await
-            .expect("Failed to get user info")
-            .json::<serde_json::Value>()
-            .await
-            .expect("Failed to get user json");
-
-        let builder = data.get("UserID").unwrap().as_u64().unwrap();
-        UserBuilder::new(builder, &self.session).await
-    }
-
-    pub async fn get_xcsrftoken(&self) -> Option<String> {
-        // Get X-CSRF Token
-
-        let resp = reqwest::Client::new()
-            .post("https://catalog.roblox.com/v1/catalog/items/details")
-            .header("content-length", "0")
-            .send()
-            .await
-            .expect("Failed to get X-CSRF-TOKEN");
-
-        resp.headers()
-            .get("x-csrf-token")
-            .map(|value| value.to_str().unwrap().to_owned())
-    }
-
-    pub async fn game(&self, builder: impl GameBuilder) -> Game {
-        builder.new(&self.session).await
-    }
-
-    async fn validate_cookie(&self) {
-        let resp = self
-            .session
-            .get("https://www.roblox.com/mobileapi/userinfo")
-            .send()
+            .request(Method::GET, "https://www.roblox.com/mobileapi/userinfo")
             .await
             .expect("Failed to get user info");
-        let _: serde_json::Value = resp.json().await.expect("Failed to get json");
+
+        let builder = data.get("UserID").unwrap().as_u64().unwrap();
+        UserBuilder::new(builder, &mut self.session).await
+    }
+
+    /// Returns a Game struct given the place ID. Get information about a game. 
+    /// ## Example
+    /// ```
+    /// use robloxapi;
+    /// use tokio;
+    /// 
+    /// #[tokio::main]
+    /// async fn main() {
+    ///     
+    ///     let place_id = 7415484311; // Place ID for game
+    ///     let client = robloxapi::Client() // Initialize a new client instance
+    ///         .await;
+    /// 
+    ///     // Create a new game given place id
+    ///     let game = client.game(place_id)
+    ///         .await;
+    /// }
+    /// ````
+    pub async fn game(&self, builder: impl GameBuilder) -> Game {
+        builder.new(&mut self.session.clone()).await
     }
 }

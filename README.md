@@ -1,9 +1,10 @@
 # robloxapi
-robloxapi is a async Rust API wrapper for roblox; Fork of PythonicIconic's [RbxAPI-rs](https://github.com/PythonicIconic/RbxAPI-rs).
+robloxapi is a open source async Rust API wrapper for roblox; Fork of PythonicIconic's [RbxAPI-rs](https://github.com/PythonicIconic/RbxAPI-rs). 
 
-## Usage
-TBA
+# Getting Started
+You can install the library by running `cargo add roboxapi`
 
+### Retrieving Users
 Example of retrieving a given user, three different ways!
 ```rust
 use rbxapi;
@@ -17,4 +18,25 @@ async fn main() {
     let str_user = client.user("builderman").await;
     let int_user = client.user(156).await;
 }
+```
+
+### Developer Products / Games
+```rust
+use robloxapi;
+use tokio;
+
+#[tokio::main]
+async fn main() {
+   let place_id = 7415484311; // Place ID for game
+   let client = robloxapi::Client() // Initialize a new client instance
+      .await;
+
+   // Create a new game given place id
+   let game = client.game(place_id)
+      .await;
+
+    // Fails if a devproduct already exists with the name
+    let dev_product = game.create_dev_product("name-of-dev-product", 17).await;
+}
+
 ```

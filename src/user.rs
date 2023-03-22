@@ -1,21 +1,24 @@
 use std::collections::HashMap;
 
 use async_trait::async_trait;
+use reqwest::Method;
 use serde::{Deserialize, Serialize};
 
 #[async_trait]
 pub trait UserBuilder {
-    async fn new(self, client: &reqwest::Client) -> User;
+    async fn new(self, client: &mut crate::Https) -> User;
 }
 
 #[async_trait]
 impl UserBuilder for &str {
-    async fn new(self, client: &reqwest::Client) -> User {
+    /// Create a new user by name
+    async fn new(self, client: &mut crate::Https) -> User {
         let mut map = HashMap::new();
         map.insert("usernames", vec![self]);
 
         let data = client
             .post(&format!("{}/usernames/users", crate::api::USER))
+            .await
             .json(&map)
             .header("content-length", serde_json::to_vec(&map).unwrap().len())
             .send()
@@ -40,9 +43,10 @@ impl UserBuilder for &str {
 
 #[async_trait]
 impl UserBuilder for u64 {
-    async fn new(self, client: &reqwest::Client) -> User {
-        let user: User = client
-            .get(&format!("{}/users/{}", crate::api::BASE, self))
+    /// Create a new user with userid
+    async fn new(self, client: &mut crate::Https) -> User {
+        let user: User = client.client
+            .request(Method::GET, &format!("{}/users/{}", crate::api::BASE, self))
             .send()
             .await
             .expect("Failed to get user info from base")
@@ -56,8 +60,8 @@ impl UserBuilder for u64 {
             avatarfinal: user.avatarfinal,
             avataruri: user.avataruri,
             isonline: user.isonline,
-            ..client
-                .get(&format!("{}/users/{}", crate::api::USER, self))
+            ..client.client
+                .request(Method::GET, &format!("{}/users/{}", crate::api::USER, self))
                 .send()
                 .await
                 .expect("Failed to get user info from user")
@@ -66,7 +70,7 @@ impl UserBuilder for u64 {
                 .expect("Failed to update struct with user")
         };
 
-        u2.auth = Some(client.clone());
+        u2.client = Some(client.clone());
         u2
     }
 }
@@ -74,7 +78,7 @@ impl UserBuilder for u64 {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct User {
     #[serde(skip)]
-    auth: Option<reqwest::Client>,
+    client: Option<crate::Https>,
     #[serde(skip)]
     friends: Option<Vec<User>>,
 
@@ -110,19 +114,21 @@ impl std::fmt::Display for User {
 }
 
 impl User {
+    /// Get all friends of user, requires cookie
     pub async fn friends(&mut self) -> Vec<User> {
         if let Some(friends) = self.friends.clone() {
-            return friends;
+            friends
         } else {
             let mut friends: Vec<User> = vec![];
             let mut page: i32 = 1;
             let mut page_string = format!("?page={}", page);
 
             let mut data = self
-                .auth
-                .as_ref()
+                .client
+                .as_mut()
                 .unwrap()
-                .get(&format!(
+                .client
+                .request(Method::GET, &format!(
                     "{}/users/{}/friends{}",
                     crate::api::BASE,
                     self.id.unwrap(),
@@ -141,10 +147,11 @@ impl User {
                 page += 1;
                 page_string = format!("?page={}", page);
                 data = self
-                    .auth
-                    .as_ref()
+                    .client
+                    .as_mut()
                     .unwrap()
-                    .get(&format!(
+                    .client
+                    .request(Method::GET, &format!(
                         "{}/users/{}/friends{}",
                         crate::api::BASE,
                         self.id.unwrap(),
@@ -167,11 +174,10 @@ impl User {
         }
     }
 
-    pub async fn has_asset(&self, asset_id: u64) -> bool {
-        self.auth
-            .as_ref()
-            .unwrap_or(&reqwest::Client::new())
-            .get(&format!(
+    /// Check if user has asset, may require cookie
+    pub async fn has_asset(&mut self, asset_id: u64) -> bool {
+        self.client.as_mut().unwrap().client
+            .request(Method::GET, &format!(
                 "{}/ownership/hasasset?userId={}&assetId={}",
                 crate::api::BASE,
                 self.id.unwrap(),

@@ -1,46 +1,39 @@
 use async_trait::async_trait;
+use reqwest::Method;
 use serde::{Deserialize, Serialize};
-use serde_json::error;
-use std::collections::HashMap;
 
 #[async_trait]
 pub trait GameBuilder {
-    async fn new(self, client: &reqwest::Client) -> Game;
+    async fn new(self, client: &mut crate::Https) -> Game;
 }
 
 #[async_trait]
 impl GameBuilder for u64 {
-    async fn new(self, client: &reqwest::Client) -> Game {
-        let data = client
-            .get(&format!(
-                "{}/games/multiget-place-details?placeIds={}",
-                crate::api::GAMES,
-                self
-            ))
-            .send()
+    async fn new(self: u64, client: &mut crate::Https) -> Game {
+        let data: _ = client
+            .request(Method::GET,
+                &format!(
+                    "{}/games/multiget-place-details?placeIds={}",
+                    crate::api::GAMES,
+                    self
+                )
+            )
             .await
-            .expect("Failed to get game universe info")
-            .json::<serde_json::Value>()
-            .await
-            .expect("Failed to get game universe json");
+            .expect("Failed to get game universe info");
 
         let data = client
-            .get(&format!(
+            .request(Method::GET, &format!(
                 "{}/games?universeIds={}",
                 crate::api::GAMES,
                 data[0]
                     .get("universeId")
                     .expect("Failed to find game universe ID")
             ))
-            .send()
             .await
-            .expect("Failed to get game root info")
-            .json::<serde_json::Value>()
-            .await
-            .expect("Failed to get game root json");
+            .expect("Failed to get game root info");
 
         Game {
-            auth: client.clone(),
+            client: client.clone(),
             ..serde_json::from_value(
                 data.get("data").expect("Failed to get game root data")[0].clone(),
             )
@@ -72,7 +65,7 @@ impl std::fmt::Display for Server {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Game {
     #[serde(skip)]
-    auth: reqwest::Client,
+    client: crate::Https,
     #[serde(skip)]
     servers: Option<Vec<Server>>,
 
@@ -133,24 +126,40 @@ impl std::fmt::Display for DevProduct {
 }
 
 impl Game {
+    /// Get a list of servers from the Game
+    /// # Example
+    /// ```
+    /// use robloxapi;
+    /// use tokio;
+    /// 
+    /// #[tokio::main]
+    /// async fn main() {
+    ///     
+    ///     // Place ID
+    ///     let game_id = 7415484311;
+    ///     let mut client = robloxapi::Client()
+    ///         .await;
+    ///     // List of servers
+    ///     let servers = client.game(game_id)
+    ///         .await
+    ///         .servers();
+    /// }
+    /// 
+    /// ```
     pub async fn servers(&mut self) -> Vec<Server> {
         if let Some(servers) = self.servers.clone() {
-            return servers;
+            servers
         } else {
             let mut servers: Vec<Server> = vec![];
             let mut data = self
-                .auth
-                .get(&format!(
+                .client
+                .request(Method::GET, &format!(
                     "{}/games/{}/servers/Public?limit=100",
                     crate::api::GAMES,
                     self.place_id
                 ))
-                .send()
                 .await
-                .expect("Failed to get server list")
-                .json::<serde_json::Value>()
-                .await
-                .expect("Failed to get server json");
+                .expect("Failed to get server list");
 
             while let Some(cursor) = data.clone().get("nextPageCursor") {
                 if cursor.is_null() {
@@ -159,24 +168,20 @@ impl Game {
 
                 if let Some(info) = data.get("data") {
                     let data_servers: Vec<Server> =
-                        serde_json::from_value(info.clone()).unwrap_or(vec![]);
+                        serde_json::from_value(info.clone()).unwrap_or_default();
                     servers.extend_from_slice(&data_servers[..]);
                 }
 
                 data = self
-                    .auth
-                    .get(&format!(
+                    .client
+                    .request(Method::GET, &format!(
                         "{}/games/{}/servers/Public?limit=100&cursor={}",
                         crate::api::GAMES,
                         self.place_id,
                         cursor.as_str().unwrap()
                     ))
-                    .send()
                     .await
-                    .expect("Failed to get server list")
-                    .json::<serde_json::Value>()
-                    .await
-                    .expect("Failed to get server json");
+                    .expect("Failed to get server list");
 
                 if let Some(error) = data.get("errors") {
                     if let Some(message) = error[0].get("message") {
@@ -185,19 +190,15 @@ impl Game {
                             tokio::time::sleep(tokio::time::Duration::from_secs(3)).await;
 
                             data = self
-                                .auth
-                                .get(&format!(
+                                .client
+                                .request(Method::GET,&format!(
                                     "{}/games/{}/servers/Public?limit=100&cursor={}",
                                     crate::api::GAMES,
                                     self.place_id,
                                     cursor.as_str().unwrap()
                                 ))
-                                .send()
                                 .await
-                                .expect("Failed to get server list")
-                                .json::<serde_json::Value>()
-                                .await
-                                .expect("Failed to get server json");
+                                .expect("Failed to get server list");
                         }
                     }
 
@@ -210,20 +211,23 @@ impl Game {
         }
     }
 
-    pub async fn create_dev_product(&self, name: String, price: u32) -> DevProduct {
-        // Get X-CSRF-TOKEN
-        let auth_resp = self
-            .auth
-            .post("https://catalog.roblox.com/v1/catalog/items/details")
-            .header("content-length", "0")
-            .send()
-            .await
-            .expect("Failed to get X-CSRF-TOKEN");
-
+    /// Create a developer product given name and price.
+    /// # Example
+    /// ```
+    /// // Create a mew game with place id 100000
+    /// let game = client.game(100000).await;
+    ///  // Requires client to be logged in with a cookie
+    /// let dev_product = game.create_dev_product(
+    ///     "devproduct1", // Name of the devproduct
+    ///     500, // Price of the devproduct
+    /// )
+    /// ```
+    /// 
+    pub async fn create_dev_product(&mut self, name: &str, price: u32) -> DevProduct {
         // Make Request To DeveloperProducts
         let data = self
-            .auth
-            .post(&format!(
+            .client
+            .request(Method::POST, &format!(
                 "{}/{}/developerproducts?name={}&description={}&priceInRobux={}",
                 crate::api::DEVPAGE,
                 self.universe_id,
@@ -231,41 +235,23 @@ impl Game {
                 price,
                 price
             ))
-            .header(
-                "x-csrf-token",
-                auth_resp.headers().get("x-csrf-token").unwrap(),
-            )
-            .header("content-length", "0")
-            .send()
             .await
             .expect("Failed to create dev product");
 
-        // Get json Data
-        let json_data = data
-            .json::<serde_json::Value>()
-            .await
-            .expect("Failed to get dev product json");
-
         // Check if any errrs occurred
-        if let Some(error) = json_data.get("errors") {
+        if let Some(error) = data.get("errors") {
             if error[0]["code"] == 4 {
                 // Developer Product Already exists
-
                 // Get the developer product internally here?
-                println!("Product already exists, retrying");
+                panic!("Product already exists");
             } else {
                 panic!("Err: {}", error[0]);
             }
         }
 
-        let product = DevProduct {
+        DevProduct {
             price,
-            ..serde_json::from_value(json_data).expect("Failed to parse into DevProduct")
-        };
-        product
+            ..serde_json::from_value(data).expect("Failed to parse into DevProduct")
+        }
     }
-
-    // pub async fn get_dev_product(&self, name: String) -> DevProduct {
-    //     // TODO
-    // }
 }
