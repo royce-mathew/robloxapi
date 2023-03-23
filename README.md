@@ -1,5 +1,7 @@
-# robloxapi
-robloxapi is a open source async Rust API wrapper for roblox; Fork of PythonicIconic's [RbxAPI-rs](https://github.com/PythonicIconic/RbxAPI-rs). 
+# RobloxApi
+[![Latest Version](https://img.shields.io/crates/v/robloxapi.svg)](https://crates.io/crates/robloxapi) [![Docs](https://img.shields.io/badge/docs.rs-robloxapi-green)](https://docs.rs/robloxapi)
+
+`robloxapi` is a open source async Rust API wrapper for roblox; Fork of PythonicIconic's [RbxAPI-rs](https://github.com/PythonicIconic/RbxAPI-rs). 
 
 # Getting Started
 You can install the library by running `cargo add roboxapi`
