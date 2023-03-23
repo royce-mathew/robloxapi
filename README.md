@@ -14,9 +14,9 @@ async fn main() {
     let cookie = "your_cookie";
     let mut client = rbxapi::Client.new().cookie(cookie).await;
     
-    let my_user = client.current_user().await;
-    let str_user = client.user("builderman").await;
-    let int_user = client.user(156).await;
+    let my_user = client.current_user().await?;
+    let str_user = client.user("builderman").await?;
+    let int_user = client.user(156).await?;
 }
 ```
 
@@ -32,11 +32,10 @@ async fn main() {
       .await;
 
    // Create a new game given place id
-   let game = client.game(place_id)
-      .await;
+   let game = client.game(place_id).await?;
 
     // Fails if a devproduct already exists with the name
-    let dev_product = game.create_dev_product("name-of-dev-product", 17).await;
+    let dev_product = game.create_dev_product("name-of-dev-product", 17).await?;
 }
 
 ```
