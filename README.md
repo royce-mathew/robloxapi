@@ -4,7 +4,7 @@
 `robloxapi` is a open source async Rust API wrapper for roblox; Fork of PythonicIconic's [RbxAPI-rs](https://github.com/PythonicIconic/RbxAPI-rs). 
 
 # Getting Started
-You can install the library by running `cargo add roboxapi`
+You can install the library by running `cargo add robloxapi`
 
 ### Retrieving Users
 Example of retrieving a given user, three different ways!
