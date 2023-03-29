@@ -49,7 +49,7 @@ pub struct DevProduct {
     pub name: String,
     #[serde(skip)]
     pub price: u32,
-    #[serde(skip)]
+    // #[serde(skip)]
     pub id: u64,
     #[serde(rename = "Description")]
     pub description: String,

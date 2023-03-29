@@ -4,7 +4,7 @@ mod https;
 mod users;
 
 pub use errors::ApiResult;
-pub use games::models::{Game, Server, DevProduct};
+pub use games::models::{DevProduct, Game, Server};
 pub use games::GameBuilder;
 pub use https::Https;
 pub use users::models::User;

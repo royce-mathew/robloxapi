@@ -40,14 +40,10 @@ impl GameBuilder for u64 {
             .await
             .expect("Failed to get game root info");
 
-
         Ok(Game {
             client: client.clone(),
             ..serde_json::from_value(
-                fdata
-                    .get("data")
-                    .expect("Failed to get game root data")[0]
-                    .clone(),
+                fdata.get("data").expect("Failed to get game root data")[0].clone(),
             )
             .expect("Failed to parse into Game")
         })
