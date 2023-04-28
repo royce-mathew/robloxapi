@@ -5,7 +5,6 @@ use serde::de::{self, DeserializeOwned};
 #[derive(Debug, Clone)]
 pub struct Https {
     pub client: reqwest::Client,
-    xcsrftoken: Option<String>,
 }
 
 impl Default for Https {
@@ -20,16 +19,13 @@ impl Client {
     ///
     /// # Example
     /// ```
-    /// use tokio;
-    /// use robloxapi;
     ///
     /// let COOKIE: &str = "_|WARNING:-DO-NOT-SHARE-THIS.--Sharing-this-will-allow-someone-to-log-in-as-you-and-to-steal-your-ROBUX-and-items.|_8B1028";
     ///
     /// #[tokio::main]
     /// async fn main() {
-    ///     let client = robloxapi::Client.new()
-    ///         .set_cookie(COOKIE)
-    ///         .await;
+    ///     let mut client = robloxapi::Client();
+    ///     client.set_cookie(COOKIE).await;
     /// }
     ///
     /// ```
@@ -46,10 +42,20 @@ impl Client {
         );
 
         // Add the x-csrf-token to the headers
-        // headers.insert(
-        //     header::HeaderName::from_static("x-csrf-token"),
-        //     header::HeaderValue::from_str( self.xcsrftoken.clone().unwrap().as_str()).unwrap(),
-        // );
+        headers.insert(
+            header::HeaderName::from_static("x-csrf-token"),
+            header::HeaderValue::from(
+                reqwest::Client::new()
+                    .post("https://auth.roblox.com/v2/logout")
+                    .header("content-length", "0")
+                    .send()
+                    .await
+                    .expect("Failed to get X-CSRF-TOKEN")
+                    .headers()
+                    .get("x-csrf-token")
+                    .unwrap_or(&header::HeaderValue::from_static("")),
+            ),
+        );
 
         // Create a new session with the cookie and token
         self.session.client = reqwest::Client::builder()
@@ -59,7 +65,9 @@ impl Client {
             .build()
             .expect("Failed to build new client from headers");
 
-        // self.validate_cookie().await;
+        // Validate Cookie before continuing
+        self.session.validate_cookie().await;
+
         self
     }
 }
@@ -72,8 +80,6 @@ impl Https {
                 .cookie_store(true)
                 .build()
                 .unwrap(),
-
-            xcsrftoken: None,
         }
     }
 
@@ -100,91 +106,30 @@ impl Https {
     where
         T: de::DeserializeOwned,
     {
-        let req_build = self.client.request(method.clone(), request_url);
-
-        // Keep building the request
-        // Check if token exists
-        let init_request = if let Some(token) = &self.xcsrftoken {
-            req_build.header(
-                "x-csrf-token",
-                header::HeaderValue::from_str(token).unwrap(),
-            )
-        } else {
-            req_build
-        }
-        .send()
-        .await
-        .expect("Request failed");
-
-        // Extract headers from request
-
-        let headers = init_request.headers().clone();
-        let status_code = init_request.status();
-
-        // Check if any errrs occurred
-        if status_code.is_client_error() {
-            // Set xcsrftoken from first header
-            self.xcsrftoken = headers
-                .get("x-csrf-token")
-                .map(|value| value.to_str().unwrap().to_owned());
-
-            // Create new request
-            let second_request = self
-                .client
-                .request(method, request_url)
-                .header("x-csrf-token", headers.get("x-csrf-token").unwrap())
-                .send()
-                .await?;
-
-            return Https::de_to_result::<T>(second_request).await;
-        }
-        return Https::de_to_result::<T>(init_request).await;
-    }
-
-    pub async fn post_default(&mut self, request_url: &str) -> Result<Response, reqwest::Error> {
-        // if self.xcsrftoken == None {
-        //     self.xcsrftoken = self.create_xcsrf_token().await;
-        // }
-
-        let request = self
+        println!("{}", request_url);
+        let response = self
             .client
-            .post(request_url)
-            .header(
-                "x-csrf-token",
-                header::HeaderValue::from_str(self.xcsrftoken.as_ref().unwrap()).unwrap(),
-            )
-            .header("content-length", "0")
+            .request(method.clone(), request_url)
             .send()
-            .await;
+            .await
+            .expect("Request failed");
 
-        self.xcsrftoken = request
-            .as_ref()
-            .unwrap()
-            .headers()
-            .get("x-csrf-token")
-            .map(|value| value.to_str().unwrap().to_owned());
-
-        request
+        return Https::de_to_result::<T>(response).await;
     }
 
     pub async fn post(&mut self, request_url: &str) -> RequestBuilder {
-        self.client.post(request_url).header(
-            "x-csrf-token",
-            header::HeaderValue::from_str(self.xcsrftoken.clone().unwrap().as_str()).unwrap(),
-        )
+        self.client.post(request_url)
     }
 
-    // // Validate the cookie
-    // async fn validate_cookie(&mut self) {
-    //     let request = self
-    //         .request(Method::GET, "https://www.roblox.com/mobileapi/userinfo")
-    //         .await
-    //         .expect("Failed to get user info");
+    // Validate the cookie
+    async fn validate_cookie(&mut self) {
+        let req = self
+            .client
+            .request(Method::GET, "https://www.roblox.com/mobileapi/userinfo")
+            .send()
+            .await
+            .expect("Failed to get user info");
 
-    //     self.xcsrftoken =  request.headers()
-    //         .get("x-csrf-token")
-    //         .map(|value| value.to_str().unwrap().to_owned());
-
-    //     let _: serde_json::Value = request.json().await.expect("Failed to get json");
-    // }
+        let _: serde_json::Value = req.json().await.expect("Failed to validate cookie");
+    }
 }

@@ -60,19 +60,17 @@ impl Game {
     /// Get a list of servers from the Game
     /// # Example
     /// ```
-    /// use robloxapi;
-    /// use tokio;
     ///
     /// #[tokio::main]
     /// async fn main() {
     ///     
     ///     // Place ID
     ///     let game_id = 7415484311;
-    ///     let mut client = robloxapi::Client()
-    ///         .await;
+    ///     let mut client = robloxapi::Client::new();
     ///     // List of servers
     ///     let servers = client.game(game_id)
     ///         .await
+    ///         .unwrap()
     ///         .servers();
     /// }
     ///
@@ -154,25 +152,27 @@ impl Game {
     /// Create a developer product given name and price.
     /// # Example
     /// ```
-    /// // Create a mew game with place id 100000
-    /// let game = client.game(100000).await;
-    ///  // Requires client to be logged in with a cookie
-    /// let dev_product = game.create_dev_product(
-    ///     "devproduct1", // Name of the devproduct
-    ///     500, // Price of the devproduct
-    /// )
-    /// ```
+    /// #[tokio::main]
+    /// async fn main() {
+    ///     let mut client = robloxapi::Client::new();
+    ///     client.set_cookie(COOKIE).await;
     ///
-    /// // Check if any errrs occurred
-    /// if let Some(error) = data.get("errors") {
-    ///     if error[0]["code"] == 4 {
-    ///         // Developer Product Already exists
-    ///         // Get the developer product internally here?
-    ///         panic!("Product already exists");
-    ///     } else {
-    ///         panic!("Err: {}", error[0]);
-    ///     }
+    ///     // Create a new game with place id 100000
+    ///     let mut game = client.game(100000).await.unwrap();
+    ///      // Requires client to be logged in with a cookie
+    ///     match game.create_dev_product(
+    ///         "devproduct1", // Name of the devproduct
+    ///         500, // Price of the devproduct
+    ///     ).await {
+    ///         Err(_err) => {
+    ///             todo!() // Handle the error
+    ///         }
+    ///         Ok(dev_product) => {
+    ///             todo!() // Use the DevProduct
+    ///         }
+    ///     };
     /// }
+    /// ```
     ///
     pub async fn create_dev_product(&mut self, name: &str, price: u32) -> ApiResult<DevProduct> {
         // Make Request To DeveloperProducts
@@ -184,7 +184,7 @@ impl Game {
                     crate::DEVPAGE,
                     self.universe_id,
                     name,
-                    price,
+                    name,
                     price
                 ),
             )

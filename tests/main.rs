@@ -8,7 +8,7 @@ async fn main() {
     let mut client = robloxapi::Client::new();
     client.set_cookie(COOKIE).await;
 
-    let user = client.user(242872495).await;
+    // let user = client.user(242872495).await;
     // dbg!(user);
 
     // println!("{}", client.current_user().await);

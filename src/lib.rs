@@ -55,12 +55,10 @@ impl Client {
     /// Create a new user given user_id
     /// ## Example
     /// ```
-    /// use tokio;
-    /// use robloxapi;
     ///
     /// #[tokio::main]
     /// async fn main() {
-    ///     let client = robloxapi::Client.new().await;
+    ///     let mut client = robloxapi::Client::new();
     ///     let user = client.user(242872495).await;
     /// }
     /// ```
@@ -71,16 +69,11 @@ impl Client {
     /// Get the current user. Must be logged in with a cookie to get current_user
     /// # Example
     /// ```
-    /// use tokio;
-    /// use robloxapi;
-    ///
-    /// let COOKIE: &str = "";
-    ///
     /// #[tokio::main]
     /// async fn main() {
-    ///     let client = robloxapi::Client.new()
-    ///         .set_cookie(COOKIE)
-    ///         .await;
+    ///     let COOKIE: &str = "";
+    ///     let mut client = robloxapi::Client::new();
+    ///     client.set_cookie(COOKIE).await;
     ///     let current_user = client.current_user().await;
     /// }
     //
@@ -98,19 +91,14 @@ impl Client {
     /// Returns a Game struct given the place ID. Get information about a game.
     /// ## Example
     /// ```
-    /// use robloxapi;
-    /// use tokio;
     ///
     /// #[tokio::main]
     /// async fn main() {
-    ///     
     ///     let place_id = 7415484311; // Place ID for game
-    ///     let client = robloxapi::Client() // Initialize a new client instance
-    ///         .await;
+    ///     let mut client = robloxapi::Client::new(); // Initialize a new client instance
     ///
     ///     // Create a new game given place id
-    ///     let game = client.game(place_id)
-    ///         .await;
+    ///     let game = client.game(place_id).await;
     /// }
     /// ````
     pub async fn game(&self, builder: impl GameBuilder) -> ApiResult<Game> {
