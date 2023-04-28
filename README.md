@@ -17,7 +17,7 @@ const COOKIE: &str = ""
 
 #[tokio::main]
 async fn main() {
-    let mut client = rbxapi::Client.new(); // Create new client Instance
+    let mut client = rbxapi::Client::new(); // Create new client Instance
     client.set_cookie(COOKIE).await; // Set the cookie for the client instance
     
     // Example on getting users
@@ -37,13 +37,13 @@ const COOKIE: &str = ""
 #[tokio::main]
 async fn main() {
    let place_id = 7415484311; // Place ID for game
-   let mut client = robloxapi::Client(); // Create a new client instance
+   let mut client = robloxapi::Client()::new(); // Create a new client instance
    client.set_cookie(COOKIE).await; // We need to set the cookie if we want to have permissions for creating developer products
 
    // Create a new game given place id
    let mut game = client.game(place_id).await?;
 
-    // Fails if a devproduct already exists with the name
+    // Returns a ApiResult which can be unwrapped to a value or a APIError
     let dev_product = game.create_dev_product(
         "name-of-dev-product", // Name of the developer product
         17 // Price of the developer product
