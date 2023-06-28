@@ -31,7 +31,7 @@ pub(crate) const ECONOMY: &str = "https://economy.roblox.com/v1/assets";
 #[allow(dead_code)]
 pub(crate) const INVENTORY: &str = "https://inventory.roblox.com";
 #[allow(dead_code)]
-pub(crate) const DEVPAGE: &str = "https://develop.roblox.com/v1/universes";
+pub(crate) const DEVPAGE: &str = "https://apis.roblox.com/developer-products/v1/universes";
 
 #[derive(Debug, Clone)]
 pub struct Client {
